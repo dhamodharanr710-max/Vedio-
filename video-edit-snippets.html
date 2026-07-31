@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIDEO.EDIT — Python Snippet Reel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/black-metal-immortal.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<style>
+  :root{
+    --bg:#0E1013;
+    --panel:#16191E;
+    --panel-2:#1C2028;
+    --line:#2A2F38;
+    --ink:#E7E9ED;
+    --ink-dim:#8A909C;
+    --playhead:#4DE8D1;
+    --marker:#FFB000;
+    --marker-dim:#7A5C1A;
+    --rec:#FF5D5D;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:
+      radial-gradient(circle at 15% -10%, rgba(77,232,209,0.06), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(255,176,0,0.05), transparent 40%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  code, pre, .mono{font-family:'JetBrains Mono', monospace;}
+
+  /* ===== Header / Timecode ===== */
+  header{
+    padding:38px 24px 22px;
+    max-width:1080px;
+    margin:0 auto;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+  }
+  .rec-dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--rec);
+    box-shadow:0 0 8px var(--rec);
+    animation:pulse 1.6s ease-in-out infinite;
+    flex-shrink:0;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:0.25;}
+  }
+  #timecode{color:var(--playhead);}
+  h1{
+    font-size:clamp(32px, 5vw, 52px);
+    font-weight:700;
+    letter-spacing:-0.02em;
+    line-height:1.05;
+  }
+  h1 .accent{color:var(--playhead);}
+  header p.sub{
+    margin-top:12px;
+    color:var(--ink-dim);
+    font-size:15px;
+    max-width:560px;
+    line-height:1.5;
+  }
+
+  /* film sprocket strip */
+  .strip{
+    margin-top:26px;
+    height:22px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    opacity:0.7;
+  }
+  .sprocket{
+    width:10px; height:10px;
+    border-radius:2px;
+    background:var(--line);
+    flex-shrink:0;
+  }
+  .strip-line{ flex:1; height:1px; background:var(--line); }
+
+  /* ===== Layout ===== */
+  main{max-width:1080px; margin:0 auto; padding:0 24px;}
+
+  /* Timeline tabs */
+  nav.timeline{
+    display:flex;
+    gap:2px;
+    margin-top:32px;
+    overflow-x:auto;
+    border-bottom:2px solid var(--line);
+  }
+  .clip-tab{
+    position:relative;
+    flex:1;
+    min-width:150px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-bottom:none;
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:0.03em;
+    padding:14px 14px 12px;
+    cursor:pointer;
+    text-align:left;
+    transition:background 0.15s, color 0.15s;
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 6px 100%, 0 70%);
+  }
+  .clip-tab .tab-index{color:var(--marker); margin-right:6px;}
+  .clip-tab .tab-title{
+    display:block;
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    margin-top:4px;
+  }
+  .clip-tab:hover{background:var(--panel-2); color:var(--ink);}
+  .clip-tab.active{
+    background:var(--panel-2);
+    color:var(--playhead);
+    border-color:var(--playhead);
+    box-shadow: inset 0 2px 0 var(--playhead);
+  }
+  .clip-tab.active .tab-title{color:var(--ink);}
+
+  /* Panels */
+  .panel{
+    display:none;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-top:none;
+    animation:reveal 0.25s ease;
+  }
+  .panel.active{display:block;}
+  @keyframes reveal{
+    from{opacity:0; transform:translateY(4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    padding:20px 22px 16px;
+    border-bottom:1px dashed var(--line);
+  }
+  .panel-head h2{
+    font-size:19px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .panel-head p{
+    color:var(--ink-dim);
+    font-size:13.5px;
+    max-width:560px;
+    line-height:1.5;
+  }
+  .runtime{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--marker);
+    white-space:nowrap;
+    border:1px solid var(--marker-dim);
+    padding:4px 8px;
+    border-radius:3px;
+  }
+
+  /* Segment (code block) */
+  .segment{
+    border-top:1px solid var(--line);
+  }
+  .segment:first-of-type{border-top:none;}
+  .segment-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 22px;
+    background:#13161B;
+  }
+  .marker-tick{
+    width:0; height:0;
+    border-left:5px solid transparent;
+    border-right:5px solid transparent;
+    border-top:7px solid var(--marker);
+    flex-shrink:0;
+  }
+  .segment-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    flex:1;
+  }
+  .copy-btn{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    padding:5px 10px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:all 0.15s;
+  }
+  .copy-btn:hover{border-color:var(--playhead); color:var(--playhead);}
+  .copy-btn.copied{border-color:var(--playhead); color:var(--playhead); background:rgba(77,232,209,0.08);}
+
+  pre{
+    margin:0;
+    padding:16px 22px 22px;
+    overflow-x:auto;
+    font-size:13px;
+    line-height:1.65;
+    background:transparent !important;
+  }
+  pre code.hljs{background:transparent !important; padding:0;}
+
+  /* focus visibility */
+  .clip-tab:focus-visible, .copy-btn:focus-visible{
+    outline:2px solid var(--playhead);
+    outline-offset:2px;
+  }
+
+  footer{
+    max-width:1080px;
+    margin:40px auto 0;
+    padding:0 24px;
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    border-top:1px solid var(--line);
+    padding-top:18px;
+  }
+
+  @media (max-width: 640px){
+    nav.timeline{flex-direction:column;}
+    .clip-tab{clip-path:none; border-bottom:1px solid var(--line);}
+    .panel-head{flex-direction:column;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .rec-dot{animation:none;}
+    .panel{animation:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow-row">
+    <span class="rec-dot"></span>
+    <span>REC</span>
+    <span id="timecode">00:00:00:00</span>
+    <span style="margin-left:auto;">4 CLIPS · PYTHON</span>
+  </div>
+  <h1>Video Editing,<br><span class="accent">Scripted.</span></h1>
+  <p class="sub">A working reel of Python snippets for cutting, compositing, and exporting video — MoviePy, OpenCV, and ffmpeg-python side by side, so you can grab the tool that fits the cut.</p>
+  <div class="strip">
+    <div class="sprocket"></div><div class="strip-line"></div>
+    <div class="sprocket"></div><div class="strip-line"></div>
+    <div class="sprocket"></div><div class="strip-line"></div>
+    <div class="sprocket"></div>
+  </div>
+</header>
+
+<main>
+  <nav class="timeline" role="tablist" aria-label="Snippet library">
+    <button class="clip-tab active" data-panel="moviepy" role="tab" aria-selected="true">
+      <span><span class="tab-index">01</span>MoviePy</span>
+      <span class="tab-title">Trim · Text · Fades</span>
+    </button>
+    <button class="clip-tab" data-panel="opencv" role="tab" aria-selected="false">
+      <span><span class="tab-index">02</span>OpenCV</span>
+      <span class="tab-title">Frame-by-frame</span>
+    </button>
+    <button class="clip-tab" data-panel="ffmpeg" role="tab" aria-selected="false">
+      <span><span class="tab-index">03</span>ffmpeg-python</span>
+      <span class="tab-title">Fast, low-level</span>
+    </button>
+    <button class="clip-tab" data-panel="autoeditor" role="tab" aria-selected="false">
+      <span><span class="tab-index">04</span>Auto-Editor</span>
+      <span class="tab-title">Full assembly</span>
+    </button>
+  </nav>
+
+  <!-- ===== PANEL 1: MOVIEPY ===== -->
+  <section class="panel active" id="moviepy">
+    <div class="panel-head">
+      <div>
+        <h2>MoviePy</h2>
+        <p>The readable choice. Best when the edit is expressive — text overlays, fades, composites — and render time isn't the bottleneck.</p>
+      </div>
+      <span class="runtime">clip-based · high-level</span>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Load, trim &amp; resize</span>
+        <button class="copy-btn" data-target="mp-1">Copy</button>
+      </div>
+      <pre><code class="language-python" id="mp-1">from moviepy.editor import *
+from moviepy.video.fx.all import fadein, fadeout
+
+clip = VideoFileClip("input.mp4")
+print(f"Duration: {clip.duration}s, Size: {clip.size}, FPS: {clip.fps}")
+
+trimmed = clip.subclip(10, 25)          # keep seconds 10 to 25
+resized = clip.resize(height=720)       # maintain aspect ratio
+# resized = clip.resize((1280, 720))    # force exact size</code></pre>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Text overlay &amp; composite</span>
+        <button class="copy-btn" data-target="mp-2">Copy</button>
+      </div>
+      <pre><code class="language-python" id="mp-2">txt_clip = (TextClip("Hello World", fontsize=70, color='white', font='Arial-Bold')
+            .set_position('center')
+            .set_duration(5)
+            .set_start(2))              # appears at 2s
+
+video_with_text = CompositeVideoClip([clip, txt_clip])</code></pre>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Audio, concat &amp; fades</span>
+        <button class="copy-btn" data-target="mp-3">Copy</button>
+      </div>
+      <pre><code class="language-python" id="mp-3">audio = AudioFileClip("music.mp3").subclip(0, clip.duration).volumex(0.3)
+clip_with_audio = clip.set_audio(audio)
+
+clip1 = VideoFileClip("part1.mp4")
+clip2 = VideoFileClip("part2.mp4")
+final = concatenate_videoclips([clip1, clip2], method="compose")
+
+faded = fadein(clip, 2).fx(fadeout, 2)  # 2s fade in, 2s fade out
+
+fast = clip.fx(vfx.speedx, 2.0)         # 2x faster
+slow = clip.fx(vfx.speedx, 0.5)         # 2x slower</code></pre>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Export</span>
+        <button class="copy-btn" data-target="mp-4">Copy</button>
+      </div>
+      <pre><code class="language-python" id="mp-4">clip.write_videofile("output.mp4", codec='libx264', audio_codec='aac', fps=30)</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== PANEL 2: OPENCV ===== -->
+  <section class="panel" id="opencv">
+    <div class="panel-head">
+      <div>
+        <h2>OpenCV</h2>
+        <p>Full frame-by-frame control. Best for computer-vision-driven edits — drawing, filtering, detection — where you need to touch every pixel.</p>
+      </div>
+      <span class="runtime">frame-loop · low-level</span>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Open source &amp; writer</span>
+        <button class="copy-btn" data-target="cv-1">Copy</button>
+      </div>
+      <pre><code class="language-python" id="cv-1">import cv2
+import numpy as np
+
+cap = cv2.VideoCapture("input.mp4")
+fps = cap.get(cv2.CAP_PROP_FPS)
+width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter("output.mp4", fourcc, fps, (width, height))</code></pre>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Trim, draw &amp; filter per frame</span>
+        <button class="copy-btn" data-target="cv-2">Copy</button>
+      </div>
+      <pre><code class="language-python" id="cv-2">frame_count = 0
+start_frame = int(10 * fps)   # start at 10s
+end_frame   = int(25 * fps)   # end at 25s
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    frame_count += 1
+
+    if frame_count < start_frame or frame_count > end_frame:
+        continue
+
+    # frame = cv2.resize(frame, (1280, 720))
+
+    cv2.putText(frame, "Hello World", (50, 100),
+                cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
+
+    cv2.rectangle(frame, (100, 100), (300, 300), (0, 255, 0), 2)
+
+    # frame = cv2.GaussianBlur(frame, (15, 15), 0)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)  # convert back for writer
+
+    out.write(frame)
+
+cap.release()
+out.release()</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== PANEL 3: FFMPEG ===== -->
+  <section class="panel" id="ffmpeg">
+    <div class="panel-head">
+      <div>
+        <h2>ffmpeg-python</h2>
+        <p>A thin wrapper over the ffmpeg binary. Best when speed matters and you don't need to touch pixels in Python at all.</p>
+      </div>
+      <span class="runtime">binary wrapper · fastest</span>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Trim &amp; resize</span>
+        <button class="copy-btn" data-target="ff-1">Copy</button>
+      </div>
+      <pre><code class="language-python" id="ff-1">import ffmpeg
+
+ffmpeg.input('input.mp4', ss=10, t=15).output('trimmed.mp4').run()
+
+ffmpeg.input('input.mp4').filter('scale', 1280, 720).output('resized.mp4').run()</code></pre>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Mux audio &amp; concatenate</span>
+        <button class="copy-btn" data-target="ff-2">Copy</button>
+      </div>
+      <pre><code class="language-python" id="ff-2">video = ffmpeg.input('video.mp4')
+audio = ffmpeg.input('audio.mp3')
+ffmpeg.output(video, audio, 'output.mp4', vcodec='copy', acodec='aac', shortest=None).run()
+
+inputs = [ffmpeg.input(f) for f in ['part1.mp4', 'part2.mp4', 'part3.mp4']]
+ffmpeg.concat(*inputs, v=1, a=1).output('merged.mp4').run()</code></pre>
+    </div>
+  </section>
+
+  <!-- ===== PANEL 4: AUTO EDITOR ===== -->
+  <section class="panel" id="autoeditor">
+    <div class="panel-head">
+      <div>
+        <h2>Auto-Editor Script</h2>
+        <p>Everything above, assembled: cut a list of segments, stitch them together, and drop in a title card.</p>
+      </div>
+      <span class="runtime">moviepy · end-to-end</span>
+    </div>
+
+    <div class="segment">
+      <div class="segment-head">
+        <span class="marker-tick"></span>
+        <span class="segment-label">Full function</span>
+        <button class="copy-btn" data-target="ae-1">Copy</button>
+      </div>
+      <pre><code class="language-python" id="ae-1">from moviepy.editor import *
+import os
+
+def auto_editor(input_path, output_path, cuts):
+    """
+    cuts: list of (start, end) tuples in seconds
+    """
+    clip = VideoFileClip(input_path)
+    segments = [clip.subclip(start, end) for start, end in cuts]
+
+    final = concatenate_videoclips(segments, method="compose")
+
+    txt = (TextClip("My Video", fontsize=100, color='white')
+           .set_duration(3)
+           .set_position('center')
+           .fx(vfx.fadein, 1)
+           .fx(vfx.fadeout, 1))
+
+    final = concatenate_videoclips([txt, final])
+
+    # music = AudioFileClip("bgm.mp3").subclip(0, final.duration).volumex(0.2)
+    # final = final.set_audio(music)
+
+    final.write_videofile(output_path, codec='libx264', threads=4)
+    clip.close()
+
+# Usage: keep only segments 5-10s and 20-30s
+auto_editor("input.mp4", "output.mp4", [(5, 10), (20, 30)])</code></pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>pip install moviepy opencv-python ffmpeg-python</span>
+  <span>scroll · copy · cut</span>
+</footer>
+
+<script>
+  hljs.highlightAll();
+
+  // Tab switching
+  const tabs = document.querySelectorAll('.clip-tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+      panels.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+      document.getElementById(tab.dataset.panel).classList.add('active');
+    });
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetEl = document.getElementById(btn.dataset.target);
+      const text = targetEl.innerText;
+      try{
+        await navigator.clipboard.writeText(text);
+      }catch(e){
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1400);
+    });
+  });
+
+  // Decorative running timecode
+  let frame = 0;
+  const tc = document.getElementById('timecode');
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  setInterval(() => {
+    frame++;
+    const f = frame % 30;
+    let totalSec = Math.floor(frame/30);
+    const s = totalSec % 60;
+    const m = Math.floor(totalSec/60) % 60;
+    const h = Math.floor(totalSec/3600);
+    tc.textContent = `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
+  }, 1000/30);
+</script>
+
+</body>
+</html>
